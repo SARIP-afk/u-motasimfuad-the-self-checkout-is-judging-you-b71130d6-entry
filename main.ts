@@ -15,7 +15,7 @@
 // Full comparison:
 // u-motasimfuad-the-self-checkout-is-judging-you-b71130d6-candidates.md.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const LINE =
@@ -30,7 +30,14 @@ if (length < 1 || length > 200 || LINE.trim().length === 0) {
 }
 
 // Write exactly LINE — no trailing newline, so the file holds 78 chars
-// (78 code points, the way the gate counts) and nothing else.
+// (78 code points, the way the gate counts) and nothing else. Then read it
+// back and refuse to finish unless the file on disk is byte-for-byte the
+// line the gate will see: a silent truncation or encoding slip must fail
+// loudly here, not on the server.
 const dir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 mkdirSync(dir, { recursive: true });
-writeFileSync(join(dir, "entry.txt"), LINE, "utf-8");
+const outPath = join(dir, "entry.txt");
+writeFileSync(outPath, LINE, "utf-8");
+if (readFileSync(outPath, "utf-8") !== LINE) {
+  throw new Error("entry.txt on disk does not match the line exactly");
+}
